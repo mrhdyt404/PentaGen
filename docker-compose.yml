@@ -1,0 +1,47 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: pentagen
+      POSTGRES_USER: pentagen
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-local-dev-only-change-me}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pentagen -d pentagen"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks: [pentagen_internal]
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redisdata:/data
+    networks: [pentagen_internal]
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/backend.Dockerfile
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://pentagen:${POSTGRES_PASSWORD:-local-dev-only-change-me}@db:5432/pentagen
+      REDIS_URL: redis://redis:6379/0
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks: [pentagen_internal]
+
+volumes:
+  pgdata:
+  redisdata:
+
+networks:
+  pentagen_internal:
+    internal: false
