@@ -235,7 +235,14 @@ def test_target_authorization_scope_and_scan_enforcement(client, monkeypatch):
             }
         ]
 
-    monkeypatch.setattr("backend.app.routers.scans.inspect_headers", fake_inspect_headers)
+    monkeypatch.setattr("backend.app.scanners.orchestrator.inspect_headers", fake_inspect_headers)
+
+    async def fake_inspect_tls(*args, **kwargs):
+        from backend.app.scanners.evidence import ScanModuleResult
+
+        return ScanModuleResult()
+
+    monkeypatch.setattr("backend.app.scanners.orchestrator.inspect_tls", fake_inspect_tls)
 
     owner = _bootstrap_owner(client)
     owner_token = owner["access_token"]
