@@ -12,19 +12,19 @@
 - [ ] MFA (TOTP / WebAuthn) enforcement
 
 ## P1 - MVP assessments
-- [ ] passive recon and technology inventory
-- [ ] source code upload and Semgrep integration in isolated worker
-- [ ] dependency/SBOM analysis
-- [ ] OpenAPI import and API inventory
-- [ ] TLS certificate and protocol assessment
+- [x] passive recon and technology inventory
+- [x] source code upload and Semgrep/SAST integration in isolated worker
+- [x] dependency/SBOM analysis
+- [x] OpenAPI import and API inventory
+- [x] TLS certificate and protocol assessment
 - [ ] ZAP baseline integration in isolated, allowlisted worker
 
 ## P2 - AI
-- [ ] provider interface for cloud LLM and Ollama
-- [ ] structured JSON outputs with schema validation
-- [ ] evidence-grounded analysis and false-positive triage
+- [x] provider interface for cloud LLM and Ollama
+- [x] structured JSON outputs with schema validation
+- [x] evidence-grounded analysis and false-positive triage
 - [ ] human approval workflow
-- [ ] prompt-injection defenses for untrusted scan output
+- [x] prompt-injection defenses for untrusted scan output
 
 ## P3 - Release
 - [ ] signed desktop-agent pairing and job envelopes
