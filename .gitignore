@@ -1,4 +1,4 @@
-# Environment files
+.gitignore# Environment files
 .env
 .env.*
 !.env.example
@@ -11,6 +11,7 @@ __pycache__/
 .venv/
 *.db
 *.sqlite3
+data/
 
 # Frontend
 frontend/node_modules/
