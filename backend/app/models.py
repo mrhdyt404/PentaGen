@@ -1,6 +1,6 @@
 import enum
 from datetime import datetime, timezone
-from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, JSON, String, Text
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Integer, JSON, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .db import Base
 
@@ -133,19 +133,59 @@ class Project(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 
+class SourceArtifact(Base):
+    """Uploaded source code archive or API specification scoped to an organization."""
+
+    __tablename__ = "source_artifacts"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    organization_id: Mapped[int] = mapped_column(ForeignKey("organizations.id"), index=True)
+    project_id: Mapped[int | None] = mapped_column(ForeignKey("projects.id"), nullable=True, index=True)
+    uploaded_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    name: Mapped[str] = mapped_column(String(160))
+    source_type: Mapped[str] = mapped_column(String(30))
+    sha256_digest: Mapped[str] = mapped_column(String(64), index=True)
+    file_count: Mapped[int] = mapped_column(Integer, default=0)
+    total_bytes: Mapped[int] = mapped_column(Integer, default=0)
+    storage_path: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
 class Scan(Base):
-    """Assessment execution record tied to an authorized target and project."""
+    """Assessment execution record tied to an authorized target and/or source artifact."""
 
     __tablename__ = "scans"
     id: Mapped[int] = mapped_column(primary_key=True)
     organization_id: Mapped[int] = mapped_column(ForeignKey("organizations.id"), index=True)
     project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
-    target_id: Mapped[int] = mapped_column(ForeignKey("targets.id"), index=True)
+    target_id: Mapped[int | None] = mapped_column(ForeignKey("targets.id"), nullable=True, index=True)
+    source_artifact_id: Mapped[int | None] = mapped_column(
+        ForeignKey("source_artifacts.id"), nullable=True, index=True
+    )
     requested_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
     status: Mapped[ScanStatus] = mapped_column(Enum(ScanStatus, name="scanstatus"), default=ScanStatus.queued)
     profile: Mapped[str] = mapped_column(String(40), default="safe_baseline")
+    scanner_summary: Mapped[dict] = mapped_column(JSON, default=dict)
     started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class Asset(Base):
+    """Discovered DNS, TLS, web technology, API endpoint, or dependency inventory item."""
+
+    __tablename__ = "assets"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    organization_id: Mapped[int] = mapped_column(ForeignKey("organizations.id"), index=True)
+    target_id: Mapped[int | None] = mapped_column(
+        ForeignKey("targets.id", ondelete="CASCADE"), nullable=True, index=True
+    )
+    scan_id: Mapped[int | None] = mapped_column(
+        ForeignKey("scans.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    asset_type: Mapped[str] = mapped_column(String(40), index=True)
+    name: Mapped[str] = mapped_column(String(255))
+    identifier: Mapped[str] = mapped_column(String(1024))
+    metadata_json: Mapped[dict] = mapped_column(JSON, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 
@@ -156,6 +196,7 @@ class Finding(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     organization_id: Mapped[int] = mapped_column(ForeignKey("organizations.id"), index=True)
     scan_id: Mapped[int] = mapped_column(ForeignKey("scans.id"), index=True)
+    category: Mapped[str] = mapped_column(String(40), default="web", index=True)
     title: Mapped[str] = mapped_column(String(255))
     description: Mapped[str] = mapped_column(Text)
     severity: Mapped[Severity] = mapped_column(Enum(Severity, name="severity"), default=Severity.info)
@@ -163,6 +204,8 @@ class Finding(Base):
     status: Mapped[str] = mapped_column(String(30), default="needs_review")
     cwe: Mapped[str | None] = mapped_column(String(30), nullable=True)
     cvss_score: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    location: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    fingerprint: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     remediation: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
@@ -177,6 +220,7 @@ class Evidence(Base):
     evidence_type: Mapped[str] = mapped_column(String(40))
     content_redacted: Mapped[str] = mapped_column(Text)
     content_hash: Mapped[str] = mapped_column(String(64))
+    artifact_metadata: Mapped[dict] = mapped_column(JSON, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 
@@ -206,4 +250,75 @@ class AuditLog(Base):
     resource_type: Mapped[str] = mapped_column(String(80))
     resource_id: Mapped[str] = mapped_column(String(80))
     details: Mapped[dict] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class LLMProviderConfig(Base):
+    """Organization-scoped AI provider definition (secrets remain in environment variables)."""
+
+    __tablename__ = "llm_providers"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    organization_id: Mapped[int] = mapped_column(ForeignKey("organizations.id"), index=True)
+    name: Mapped[str] = mapped_column(String(120))
+    provider_type: Mapped[str] = mapped_column(String(30))  # cloud_openai | ollama
+    base_url: Mapped[str] = mapped_column(String(512))
+    model_name: Mapped[str] = mapped_column(String(120))
+    api_key_env_var: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    is_default: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class AgentRun(Base):
+    """Execution record for a multi-agent AI analysis or planning run."""
+
+    __tablename__ = "agent_runs"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    organization_id: Mapped[int] = mapped_column(ForeignKey("organizations.id"), index=True)
+    scan_id: Mapped[int | None] = mapped_column(ForeignKey("scans.id"), nullable=True, index=True)
+    provider_id: Mapped[int | None] = mapped_column(
+        ForeignKey("llm_providers.id"), nullable=True, index=True
+    )
+    requested_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    mode: Mapped[str] = mapped_column(String(40), default="hybrid_ai")
+    status: Mapped[str] = mapped_column(String(30), default="completed")
+    plan_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    summary_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    started_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class AgentTask(Base):
+    """Individual agent task adhering to the fixed allowlisted action contract."""
+
+    __tablename__ = "agent_tasks"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    organization_id: Mapped[int] = mapped_column(ForeignKey("organizations.id"), index=True)
+    run_id: Mapped[int] = mapped_column(ForeignKey("agent_runs.id", ondelete="CASCADE"), index=True)
+    agent_name: Mapped[str] = mapped_column(String(60))
+    action_name: Mapped[str] = mapped_column(String(60))
+    status: Mapped[str] = mapped_column(String(30), default="completed")
+    input_snapshot: Mapped[dict] = mapped_column(JSON, default=dict)
+    output_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class FindingAnalysis(Base):
+    """Advisory AI security analyst & false-positive triage record linked to a finding."""
+
+    __tablename__ = "finding_analyses"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    organization_id: Mapped[int] = mapped_column(ForeignKey("organizations.id"), index=True)
+    finding_id: Mapped[int] = mapped_column(ForeignKey("findings.id", ondelete="CASCADE"), index=True)
+    agent_run_id: Mapped[int] = mapped_column(ForeignKey("agent_runs.id", ondelete="CASCADE"), index=True)
+    verdict: Mapped[str] = mapped_column(String(40), default="needs_verification")
+    is_likely_false_positive: Mapped[bool] = mapped_column(Boolean, default=False)
+    fp_confidence: Mapped[str] = mapped_column(String(16), default="0.00")
+    risk_score: Mapped[str] = mapped_column(String(16), default="0.0")
+    priority_rank: Mapped[int] = mapped_column(Integer, default=3)
+    rationale: Mapped[str] = mapped_column(Text)
+    remediation_plan: Mapped[str] = mapped_column(Text)
+    evidence_refs: Mapped[list] = mapped_column(JSON, default=list)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
