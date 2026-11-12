@@ -23,6 +23,15 @@ class Settings(BaseSettings):
     access_token_minutes: int = 30
     refresh_token_days: int = 7
     cors_origins: str = "http://localhost:5173"
+    artifacts_dir: str = str(Path(__file__).resolve().parents[2] / "data" / "artifacts")
+    enable_semgrep_cli: bool = False
+    scanner_timeout_seconds: float = 8.0
+    ollama_base_url: str = "http://127.0.0.1:11434"
+    ollama_default_model: str = "llama3.1"
+    cloud_llm_base_url: str = "https://api.openai.com/v1"
+    cloud_llm_model: str = "gpt-4o-mini"
+    cloud_llm_api_key: str = ""
+    ai_timeout_seconds: float = 20.0
 
     model_config = SettingsConfigDict(
         env_file=(".env", str(_ROOT_ENV)) if _ROOT_ENV.exists() else ".env",
