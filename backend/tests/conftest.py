@@ -18,8 +18,18 @@ os.environ["APP_ENV"] = "test"
 os.environ["JWT_SECRET"] = "test-only-secret-key-with-more-than-32-bytes"
 os.environ["DATABASE_URL"] = "sqlite:///./pentagen-test-bootstrap.db"
 
+from backend.app.config import settings
 from backend.app.db import get_db
 from backend.app.main import app
+
+
+@pytest.fixture(autouse=True)
+def isolated_artifacts_dir(tmp_path: Path, monkeypatch):
+    """Isolate uploaded artifact storage to per-test temporary directory."""
+    target_dir = tmp_path / "artifacts"
+    target_dir.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setattr(settings, "artifacts_dir", str(target_dir))
+    return target_dir
 
 
 @pytest.fixture(scope="session")
