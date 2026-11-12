@@ -3,7 +3,19 @@ from sqlalchemy.orm import Session
 from .audit import to_naive_utc
 from .models import Authorization, Target, utcnow
 
-ALLOWED_SCAN_PROFILES = frozenset({"safe_baseline"})
+ALLOWED_SCAN_PROFILES = frozenset(
+    {
+        "safe_baseline",
+        "recon_passive",
+        "web_baseline",
+        "api_audit",
+        "code_sast",
+        "full_non_destructive",
+    }
+)
+TARGET_REQUIRED_PROFILES = frozenset(
+    {"safe_baseline", "recon_passive", "web_baseline", "full_non_destructive"}
+)
 
 
 class AuthorizationPolicyError(ValueError):
