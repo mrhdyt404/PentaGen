@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, HttpUrl
 from .models import Role, ScanStatus, Severity
 
@@ -138,10 +139,74 @@ class AuthorizationOut(BaseModel):
     created_at: datetime
 
 
+class InlineSourceUploadRequest(BaseModel):
+    """Structured inline source files submission for static code/dependency analysis."""
+
+    name: str = Field(min_length=2, max_length=160)
+    project_id: int | None = None
+    files: dict[str, str] = Field(min_length=1)
+
+
+class OpenAPIImportRequest(BaseModel):
+    """OpenAPI 3.x / Swagger 2.0 specification import payload."""
+
+    name: str = Field(min_length=2, max_length=160)
+    project_id: int | None = None
+    spec_text: str = Field(min_length=10, max_length=2_000_000)
+
+
+class SourceArtifactOut(BaseModel):
+    """Uploaded source bundle or OpenAPI specification metadata."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    organization_id: int
+    project_id: int | None
+    uploaded_by: int
+    name: str
+    source_type: str
+    sha256_digest: str
+    file_count: int
+    total_bytes: int
+    created_at: datetime
+
+
+class AssetOut(BaseModel):
+    """Discovered inventory record."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    organization_id: int
+    target_id: int | None
+    scan_id: int | None
+    asset_type: str
+    name: str
+    identifier: str
+    metadata_json: dict
+    created_at: datetime
+
+
+class EvidenceOut(BaseModel):
+    """Redacted supporting proof with SHA-256 integrity hash."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    finding_id: int
+    evidence_type: str
+    content_redacted: str
+    content_hash: str
+    artifact_metadata: dict
+    created_at: datetime
+
+
 class ScanCreate(BaseModel):
     """Authorized scan execution request."""
 
-    target_id: int
+    target_id: int | None = None
+    source_artifact_id: int | None = None
     project_name: str = Field(min_length=2, max_length=180)
     profile: str = Field(default="safe_baseline", min_length=2, max_length=40)
     confirm_authorized: bool
@@ -155,10 +220,12 @@ class ScanOut(BaseModel):
     id: int
     organization_id: int
     project_id: int
-    target_id: int
+    target_id: int | None
+    source_artifact_id: int | None
     requested_by: int
     status: ScanStatus
     profile: str
+    scanner_summary: dict
     started_at: datetime | None
     finished_at: datetime | None
     created_at: datetime
@@ -171,6 +238,7 @@ class FindingOut(BaseModel):
 
     id: int
     scan_id: int
+    category: str
     title: str
     description: str
     severity: Severity
@@ -178,6 +246,8 @@ class FindingOut(BaseModel):
     status: str
     cwe: str | None
     cvss_score: str | None
+    location: str | None
+    fingerprint: str | None
     remediation: str | None
     created_at: datetime
 
@@ -195,3 +265,110 @@ class AuditLogOut(BaseModel):
     resource_id: str
     details: dict
     created_at: datetime
+
+
+class LLMProviderCreate(BaseModel):
+    """Register a Cloud OpenAI-compatible or local Ollama provider for an organization."""
+
+    name: str = Field(min_length=2, max_length=120)
+    provider_type: Literal["cloud_openai", "ollama"]
+    base_url: HttpUrl
+    model_name: str = Field(min_length=1, max_length=120)
+    api_key_env_var: str | None = Field(default=None, pattern=r"^[A-Z][A-Z0-9_]{1,79}$")
+    is_default: bool = False
+
+
+class LLMProviderOut(BaseModel):
+    """Public LLM provider configuration without secret values."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    organization_id: int
+    name: str
+    provider_type: str
+    base_url: str
+    model_name: str
+    api_key_env_var: str | None
+    is_default: bool
+    is_active: bool
+    created_at: datetime
+
+
+class AIPlanRequest(BaseModel):
+    """Request for AI assessment planning."""
+
+    target_id: int | None = None
+    source_artifact_id: int | None = None
+    goal: str = Field(min_length=3, max_length=500)
+    provider_id: int | None = None
+
+
+class AIAnalyzeRequest(BaseModel):
+    """Request for AI triage, false-positive detection, and risk scoring on a scan."""
+
+    provider_id: int | None = None
+
+
+class AgentTaskOut(BaseModel):
+    """Individual orchestrated agent task log."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    agent_name: str
+    action_name: str
+    status: str
+    input_snapshot: dict
+    output_json: dict
+    error_message: str | None
+    created_at: datetime
+
+
+class AgentRunOut(BaseModel):
+    """Multi-agent orchestration run summary."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    organization_id: int
+    scan_id: int | None
+    provider_id: int | None
+    mode: str
+    status: str
+    plan_json: dict
+    summary_json: dict
+    started_at: datetime
+    finished_at: datetime | None
+
+
+class AgentRunDetailOut(AgentRunOut):
+    """Orchestration run along with its ordered task execution trail."""
+
+    tasks: list[AgentTaskOut] = Field(default_factory=list)
+
+
+class FindingAnalysisOut(BaseModel):
+    """Advisory AI security analyst & false-positive triage record."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    finding_id: int
+    agent_run_id: int
+    verdict: str
+    is_likely_false_positive: bool
+    fp_confidence: str
+    risk_score: str
+    priority_rank: int
+    rationale: str
+    remediation_plan: str
+    evidence_refs: list
+    created_at: datetime
+
+
+class AIAnalyzeResponse(BaseModel):
+    """Combined AI analysis response for a scan."""
+
+    run: AgentRunOut
+    analyses: list[FindingAnalysisOut]
