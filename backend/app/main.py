@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .config import settings
-from .routers import audit, auth, scans, targets, users
+from .routers import ai, artifacts, assets, audit, auth, scans, targets, users
 
 
 @asynccontextmanager
@@ -37,5 +37,8 @@ def health():
 app.include_router(auth.router, prefix=settings.api_prefix)
 app.include_router(users.router, prefix=settings.api_prefix)
 app.include_router(targets.router, prefix=settings.api_prefix)
+app.include_router(artifacts.router, prefix=settings.api_prefix)
+app.include_router(assets.router, prefix=settings.api_prefix)
 app.include_router(scans.router, prefix=settings.api_prefix)
+app.include_router(ai.router, prefix=settings.api_prefix)
 app.include_router(audit.router, prefix=settings.api_prefix)
