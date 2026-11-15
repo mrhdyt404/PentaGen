@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 from ..audit import record_audit
 from ..authorization_policy import (
@@ -11,6 +11,8 @@ from ..deps import get_current_user, require_roles
 from ..models import (
     Evidence,
     Finding,
+    FindingAnalysis,
+    Organization,
     Project,
     Role,
     Scan,
@@ -20,6 +22,7 @@ from ..models import (
     User,
     utcnow,
 )
+from ..reporting.pdf_generator import generate_scan_pdf_report
 from ..scanners.evidence import persist_scan_outputs
 from ..scanners.orchestrator import execute_scan_profile
 from ..schemas import EvidenceOut, FindingOut, ScanCreate, ScanOut
@@ -302,4 +305,95 @@ def list_finding_evidence(
         )
         .order_by(Evidence.id.asc())
         .all()
+    )
+
+
+@router.get("/scans/{scan_id}/report.pdf")
+def export_scan_pdf_report(
+    scan_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Generate and download a professional PDF security assessment report."""
+    scan = (
+        db.query(Scan)
+        .filter(Scan.id == scan_id, Scan.organization_id == current_user.organization_id)
+        .first()
+    )
+    if scan is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Scan not found.")
+
+    target = (
+        db.query(Target)
+        .filter(Target.id == scan.target_id, Target.organization_id == current_user.organization_id)
+        .first()
+        if scan.target_id
+        else None
+    )
+
+    org = (
+        db.query(Organization)
+        .filter(Organization.id == current_user.organization_id)
+        .first()
+    )
+    if org is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Organization not found.")
+
+    findings = (
+        db.query(Finding)
+        .filter(Finding.scan_id == scan.id, Finding.organization_id == current_user.organization_id)
+        .order_by(Finding.id.asc())
+        .all()
+    )
+
+    finding_ids = [f.id for f in findings]
+    evidence_items = (
+        db.query(Evidence)
+        .filter(
+            Evidence.finding_id.in_(finding_ids),
+            Evidence.organization_id == current_user.organization_id,
+        )
+        .all()
+        if finding_ids
+        else []
+    )
+
+    analyses = (
+        db.query(FindingAnalysis)
+        .filter(
+            FindingAnalysis.finding_id.in_(finding_ids),
+            FindingAnalysis.organization_id == current_user.organization_id,
+        )
+        .all()
+        if finding_ids
+        else []
+    )
+
+    pdf_bytes = generate_scan_pdf_report(
+        scan=scan,
+        target=target,
+        organization=org,
+        findings=findings,
+        evidence_items=evidence_items,
+        analyses=analyses,
+    )
+
+    record_audit(
+        db,
+        organization_id=current_user.organization_id,
+        actor_user_id=current_user.id,
+        event_type="scan.report_exported_pdf",
+        resource_type="scan",
+        resource_id=str(scan.id),
+        details={"findings_count": len(findings), "bytes": len(pdf_bytes)},
+    )
+    db.commit()
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="pentagen-scan-{scan.id}-report.pdf"',
+            "Content-Length": str(len(pdf_bytes)),
+        },
     )
