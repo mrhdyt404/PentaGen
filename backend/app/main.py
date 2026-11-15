@@ -2,7 +2,19 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .config import settings
-from .routers import ai, artifacts, assets, audit, auth, scans, targets, users
+from .routers import (
+    agent_jobs,
+    ai,
+    approvals,
+    artifacts,
+    assets,
+    audit,
+    auth,
+    pairing,
+    scans,
+    targets,
+    users,
+)
 
 
 @asynccontextmanager
@@ -42,3 +54,6 @@ app.include_router(assets.router, prefix=settings.api_prefix)
 app.include_router(scans.router, prefix=settings.api_prefix)
 app.include_router(ai.router, prefix=settings.api_prefix)
 app.include_router(audit.router, prefix=settings.api_prefix)
+app.include_router(pairing.router, prefix=settings.api_prefix)
+app.include_router(approvals.router, prefix=settings.api_prefix)
+app.include_router(agent_jobs.router, prefix=settings.api_prefix)
