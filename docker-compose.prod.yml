@@ -1,0 +1,94 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-pentagen}
+      POSTGRES_USER: ${POSTGRES_USER:-pentagen_app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Database password must be set in production}
+    volumes:
+      - pgdata_prod:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-pentagen_app} -d ${POSTGRES_DB:-pentagen}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2048M
+    networks:
+      - backend_isolated
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:?Redis password must be set}", "--appendonly", "yes"]
+    volumes:
+      - redisdata_prod:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+    networks:
+      - backend_isolated
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/backend.prod.Dockerfile
+    restart: unless-stopped
+    env_file: .env.production
+    environment:
+      APP_ENV: production
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-pentagen_app}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-pentagen}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      JWT_SECRET: ${JWT_SECRET:?JWT secret must be at least 32 bytes in production}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2048M
+    networks:
+      - backend_isolated
+      - frontend_dmz
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: docker/frontend.prod.Dockerfile
+    restart: unless-stopped
+    ports:
+      - "80:8080"
+    depends_on:
+      api:
+        condition: service_started
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+    networks:
+      - frontend_dmz
+
+volumes:
+  pgdata_prod:
+  redisdata_prod:
+
+networks:
+  backend_isolated:
+    internal: true
+  frontend_dmz:
+    driver: bridge
