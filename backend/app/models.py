@@ -231,11 +231,77 @@ class Approval(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     organization_id: Mapped[int] = mapped_column(ForeignKey("organizations.id"), index=True)
     scan_id: Mapped[int] = mapped_column(ForeignKey("scans.id"), index=True)
+    target_id: Mapped[int | None] = mapped_column(
+        ForeignKey("targets.id"), nullable=True, index=True
+    )
+    envelope_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     requested_action: Mapped[str] = mapped_column(String(120))
     risk_level: Mapped[str] = mapped_column(String(20))
-    status: Mapped[str] = mapped_column(String(20), default="pending")
+    status: Mapped[str] = mapped_column(String(20), default="pending")  # pending, approved, rejected
     decided_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    risk_assessment_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class PairingToken(Base):
+    """One-time pairing token for registering desktop agent devices."""
+
+    __tablename__ = "pairing_tokens"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    organization_id: Mapped[int] = mapped_column(ForeignKey("organizations.id"), index=True)
+    created_by: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    name_hint: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, index=True)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class AgentNode(Base):
+    """Paired desktop agent device authenticated via HMAC shared secret."""
+
+    __tablename__ = "agent_nodes"
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    organization_id: Mapped[int] = mapped_column(ForeignKey("organizations.id"), index=True)
+    name: Mapped[str] = mapped_column(String(160))
+    device_fingerprint: Mapped[str] = mapped_column(String(64), index=True)
+    shared_secret: Mapped[str] = mapped_column(String(128))
+    status: Mapped[str] = mapped_column(String(30), default="active")  # active, revoked
+    platform_info: Mapped[dict] = mapped_column(JSON, default=dict)
+    last_seen_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    revoked_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+
+
+class AgentJobEnvelope(Base):
+    """Cryptographically signed assessment job envelope dispatched to a desktop agent."""
+
+    __tablename__ = "agent_job_envelopes"
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    organization_id: Mapped[int] = mapped_column(ForeignKey("organizations.id"), index=True)
+    agent_node_id: Mapped[str | None] = mapped_column(
+        ForeignKey("agent_nodes.id"), nullable=True, index=True
+    )
+    scan_id: Mapped[int] = mapped_column(ForeignKey("scans.id"), index=True)
+    task_id: Mapped[int | None] = mapped_column(
+        ForeignKey("agent_tasks.id"), nullable=True, index=True
+    )
+    approval_id: Mapped[int | None] = mapped_column(
+        ForeignKey("approvals.id"), nullable=True, index=True
+    )
+    action: Mapped[str] = mapped_column(String(60))
+    payload_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    nonce: Mapped[str] = mapped_column(String(64))
+    signature: Mapped[str] = mapped_column(String(128))
+    status: Mapped[str] = mapped_column(
+        String(30), default="pending"
+    )  # pending, dispatched, completed, failed, rejected
+    dispatched_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    result_json: Mapped[dict] = mapped_column(JSON, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 
