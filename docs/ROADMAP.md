@@ -23,11 +23,11 @@
 - [x] provider interface for cloud LLM and Ollama
 - [x] structured JSON outputs with schema validation
 - [x] evidence-grounded analysis and false-positive triage
-- [ ] human approval workflow
+- [x] human approval workflow
 - [x] prompt-injection defenses for untrusted scan output
 
 ## P3 - Release
-- [ ] signed desktop-agent pairing and job envelopes
+- [x] signed desktop-agent pairing and job envelopes
 - [ ] worker sandbox and strict egress policy
 - [ ] PDF report generator
 - [ ] rate limits, monitoring, backups, security review
