@@ -1,10 +1,7 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Activity,
-  AlertTriangle,
-  Award,
   CheckCircle,
-  Clock,
   Download,
   FileCheck,
   FileText,
@@ -12,7 +9,6 @@ import {
   Plus,
   RefreshCw,
   Search,
-  ShieldAlert,
   ShieldCheck,
   XCircle,
 } from "lucide-react";
