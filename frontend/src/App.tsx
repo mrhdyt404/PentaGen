@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, type FormEvent } from "react";
 import {
   Activity,
   CheckCircle,
@@ -81,7 +81,7 @@ export default function App() {
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
 
-  async function handleLogin(e: React.FormEvent) {
+  async function handleLogin(e: FormEvent) {
     e.preventDefault();
     setMessage("");
     try {
@@ -126,7 +126,7 @@ export default function App() {
     if (token) loadData();
   }, [token]);
 
-  async function handleCreateTarget(e: React.FormEvent) {
+  async function handleCreateTarget(e: FormEvent) {
     e.preventDefault();
     setMessage("");
     try {
