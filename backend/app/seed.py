@@ -4,7 +4,7 @@ from .models import Organization, Role, User
 from .security import hash_password
 
 def seed_default_admin(
-    email: str = "admin@pentagen.local",
+    email: str = "admin@pentagen.com",
     password: str = "Password123!Secure",
     org_name: str = "PentaGen Security",
 ) -> None:
