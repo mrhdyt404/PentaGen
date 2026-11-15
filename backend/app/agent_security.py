@@ -153,3 +153,4 @@ def verify_agent_request(
         return False, "Request HMAC signature verification failed."
 
     return True, None
+
