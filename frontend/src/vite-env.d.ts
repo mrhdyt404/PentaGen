@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
 
-declare module "react" {
+declare namespace React {
   export interface CSSProperties {
     [key: string]: any;
   }
@@ -36,7 +36,7 @@ declare module "react" {
     disabled?: boolean;
   }
 
-  export type FormEvent<T = Element> = {
+  export type FormEvent<T = any> = {
     preventDefault: () => void;
     stopPropagation: () => void;
     target: T;
@@ -44,7 +44,7 @@ declare module "react" {
     [key: string]: any;
   };
 
-  export type ChangeEvent<T = Element> = {
+  export type ChangeEvent<T = any> = {
     target: T & { value: string; checked?: boolean };
     currentTarget: T & { value: string; checked?: boolean };
     [key: string]: any;
@@ -60,14 +60,6 @@ declare module "react" {
   export function useRef<T>(initialValue?: T): { current: T };
 
   export const StrictMode: any;
-  const React: {
-    StrictMode: any;
-    useState: typeof useState;
-    useEffect: typeof useEffect;
-    FormEvent: any;
-    [key: string]: any;
-  };
-  export default React;
 
   export namespace JSX {
     interface Element extends any {}
@@ -76,6 +68,11 @@ declare module "react" {
       [elem: string]: any;
     }
   }
+}
+
+declare module "react" {
+  export = React;
+  export as namespace React;
 }
 
 declare module "react/jsx-runtime" {
