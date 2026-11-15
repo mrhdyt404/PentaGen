@@ -32,6 +32,15 @@ def isolated_artifacts_dir(tmp_path: Path, monkeypatch):
     return target_dir
 
 
+@pytest.fixture(autouse=True)
+def clear_rate_limit_store():
+    """Clear in-memory rate limiter store between tests to prevent test pollution."""
+    from backend.app.security_headers import _RATE_LIMIT_STORE
+    _RATE_LIMIT_STORE.clear()
+    yield
+    _RATE_LIMIT_STORE.clear()
+
+
 @pytest.fixture(scope="session")
 def migrated_template_db(tmp_path_factory: pytest.TempPathFactory) -> Path:
     """Run Alembic head migration once per test session and reuse as a clean template."""
