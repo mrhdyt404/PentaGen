@@ -493,3 +493,21 @@ class ApprovalDecisionRequest(BaseModel):
 
     decision: Literal["approve", "reject"]
     reason: str = Field(min_length=3, max_length=1000)
+
+
+class DashboardOverviewOut(BaseModel):
+    """Aggregated organizational security posture and activity overview."""
+
+    total_targets: int
+    total_scans: int
+    active_scans: int
+    pending_approvals: int
+    paired_agents: int
+    total_findings: int
+    posture_score: int
+    security_grade: str
+    severity_distribution: dict[str, int]
+    status_distribution: dict[str, int]
+    recent_scans: list[dict]
+    recent_findings: list[dict]
+    recent_approvals: list[dict]
