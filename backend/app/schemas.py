@@ -372,3 +372,124 @@ class AIAnalyzeResponse(BaseModel):
 
     run: AgentRunOut
     analyses: list[FindingAnalysisOut]
+
+
+class PairingTokenCreate(BaseModel):
+    """Request to generate a one-time pairing token for desktop agents."""
+
+    name_hint: str | None = Field(default=None, max_length=120)
+    expires_in_minutes: int = Field(default=15, ge=1, le=1440)
+
+
+class PairingTokenOut(BaseModel):
+    """One-time token details returned to owner upon generation."""
+
+    id: int
+    token: str
+    name_hint: str | None
+    expires_at: datetime
+    created_at: datetime
+
+
+class PairDeviceRequest(BaseModel):
+    """Desktop agent device registration payload."""
+
+    token: str = Field(min_length=16, max_length=128)
+    device_name: str = Field(min_length=2, max_length=160)
+    device_fingerprint: str = Field(min_length=8, max_length=128)
+    platform_info: dict = Field(default_factory=dict)
+
+
+class PairDeviceResponse(BaseModel):
+    """Credentials returned to desktop agent upon successful pairing."""
+
+    agent_id: str
+    shared_secret: str
+    organization_id: int
+    organization_name: str
+
+
+class AgentNodeOut(BaseModel):
+    """Public paired desktop agent record."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    organization_id: int
+    name: str
+    device_fingerprint: str
+    status: str
+    platform_info: dict
+    last_seen_at: datetime
+    created_at: datetime
+    revoked_at: datetime | None
+
+
+class AgentJobCreate(BaseModel):
+    """Request to schedule an authorized assessment job for a desktop agent."""
+
+    target_id: int | None = None
+    source_artifact_id: int | None = None
+    project_name: str = Field(default="Desktop Assessment", min_length=2, max_length=180)
+    action: str = Field(default="safe_baseline", min_length=2, max_length=60)
+    agent_node_id: str | None = None
+    requires_approval: bool = False
+    risk_level: str = Field(default="medium", pattern="^(low|medium|high|critical)$")
+    params: dict = Field(default_factory=dict)
+    confirm_authorized: bool = True
+
+
+class AgentJobEnvelopeOut(BaseModel):
+    """Signed job envelope payload sent to desktop agents."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    organization_id: int
+    agent_node_id: str | None
+    scan_id: int
+    approval_id: int | None
+    action: str
+    payload_json: dict
+    nonce: str
+    signature: str
+    status: str
+    created_at: datetime
+
+
+class AgentJobResultSubmission(BaseModel):
+    """Execution results and evidence submitted by desktop agent."""
+
+    status: Literal["completed", "failed"]
+    findings: list[dict] = Field(default_factory=list)
+    evidence: list[dict] = Field(default_factory=list)
+    assets: list[dict] = Field(default_factory=list)
+    summary: dict = Field(default_factory=dict)
+    error_message: str | None = None
+
+
+class ApprovalOut(BaseModel):
+    """Gated security action approval record."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    organization_id: int
+    scan_id: int
+    target_id: int | None
+    envelope_id: str | None
+    requested_action: str
+    risk_level: str
+    status: str
+    decided_by: int | None
+    reason: str | None
+    risk_assessment_json: dict
+    created_at: datetime
+    decided_at: datetime | None
+
+
+class ApprovalDecisionRequest(BaseModel):
+    """Reviewer or owner decision on a pending approval."""
+
+    decision: Literal["approve", "reject"]
+    reason: str = Field(min_length=3, max_length=1000)
