@@ -132,3 +132,4 @@ def downgrade() -> None:
         batch_op.drop_index(batch_op.f('ix_pairing_tokens_token_hash'))
         batch_op.drop_index(batch_op.f('ix_pairing_tokens_organization_id'))
     op.drop_table('pairing_tokens')
+
