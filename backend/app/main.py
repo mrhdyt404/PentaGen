@@ -10,11 +10,13 @@ from .routers import (
     assets,
     audit,
     auth,
+    dashboard,
     pairing,
     scans,
     targets,
     users,
 )
+from .security_headers import RateLimitMiddleware, SecurityHeadersMiddleware
 
 
 @asynccontextmanager
@@ -38,6 +40,8 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PATCH", "DELETE"],
     allow_headers=["Authorization", "Content-Type"],
 )
+app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(RateLimitMiddleware)
 
 
 @app.get("/health")
@@ -54,6 +58,7 @@ app.include_router(assets.router, prefix=settings.api_prefix)
 app.include_router(scans.router, prefix=settings.api_prefix)
 app.include_router(ai.router, prefix=settings.api_prefix)
 app.include_router(audit.router, prefix=settings.api_prefix)
+app.include_router(dashboard.router, prefix=settings.api_prefix)
 app.include_router(pairing.router, prefix=settings.api_prefix)
 app.include_router(approvals.router, prefix=settings.api_prefix)
 app.include_router(agent_jobs.router, prefix=settings.api_prefix)
