@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     jwt_audience: str = "pentagen-client"
     access_token_minutes: int = 30
     refresh_token_days: int = 7
-    cors_origins: str = "http://localhost:5173"
+    cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
     artifacts_dir: str = str(Path(__file__).resolve().parents[2] / "data" / "artifacts")
     enable_semgrep_cli: bool = False
     scanner_timeout_seconds: float = 8.0
