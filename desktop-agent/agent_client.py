@@ -318,3 +318,4 @@ class DesktopAgentClient:
         finally:
             if client is None:
                 http.close()
+
