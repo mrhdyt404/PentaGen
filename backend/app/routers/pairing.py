@@ -209,3 +209,4 @@ def revoke_agent_node(
     db.refresh(node)
 
     return node
+
