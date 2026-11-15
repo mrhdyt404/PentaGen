@@ -28,6 +28,6 @@
 
 ## P3 - Release
 - [x] signed desktop-agent pairing and job envelopes
-- [ ] worker sandbox and strict egress policy
-- [ ] PDF report generator
-- [ ] rate limits, monitoring, backups, security review
+- [x] worker sandbox and strict egress policy
+- [x] PDF report generator
+- [x] rate limits, monitoring, backups, security review
